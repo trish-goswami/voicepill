@@ -320,6 +320,13 @@ class Recorder:
 # --- groq -----------------------------------------------------------------
 def _curl(args: list) -> str:
     r = run(["curl.exe", "-s", "--max-time", "180"] + args)
+    if r.returncode != 0:
+        # 6 = DNS, 7 = refused, 28 = timeout. Without this the empty stdout falls
+        # through to the silence guard and the pill blames the microphone for
+        # what is actually a dead network - the worst kind of wrong error.
+        raise RuntimeError({6: "no network", 7: "cannot reach groq",
+                            28: "groq timed out"}.get(r.returncode,
+                                                     f"curl failed ({r.returncode})"))
     return (r.stdout or "").strip()
 
 
@@ -334,6 +341,8 @@ def transcribe(path: pathlib.Path) -> str:
                  "-F", f"prompt={vocab}"])
     if out.startswith("{"):          # errors come back as JSON, not text
         raise RuntimeError(out[:160])
+    if not out.strip():
+        raise RuntimeError("empty response from groq")
     return out.strip()
 
 
@@ -348,11 +357,11 @@ def structure(text: str) -> str:
                      {"role": "user", "content": text}],
         "temperature": 0,   # detail retention beats phrasing variety
     }), encoding="utf-8")
-    out = _curl([f"{API}/chat/completions",
-                 "-H", f"Authorization: Bearer {KEY}",
-                 "-H", "Content-Type: application/json",
-                 "--data-binary", f"@{payload}"])
     try:
+        out = _curl([f"{API}/chat/completions",
+                     "-H", f"Authorization: Bearer {KEY}",
+                     "-H", "Content-Type: application/json",
+                     "--data-binary", f"@{payload}"])
         return json.loads(out)["choices"][0]["message"]["content"].strip() or text
     except Exception:
         return text
