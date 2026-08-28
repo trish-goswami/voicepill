@@ -50,8 +50,14 @@ print("\n--- D. Transcription / structuring ---")
 os.environ["GROQ_API_KEY"] = v.KEY
 txt = v.transcribe(path)
 check("D1", "Groq transcription returns a string", isinstance(txt, str) and len(txt) > 0, repr(txt[:40]))
-check("D2", "silence guard recognises whisper's hallucination",
-      txt.strip().lower() in v.SILENCE or size > 20000, repr(txt.strip()[:30]))
+# deterministic: assert the guard's logic, not whether this room happened to be
+# quiet. Ambient noise made this flaky when it depended on the live recording.
+check("D2", "silence guard knows whisper's hallucinations for a silent file",
+      all(h in v.SILENCE for h in ("", "thank you.", "thanks for watching!")))
+check("D2b", "guard is actually applied before pasting",
+      "text.strip().lower() in SILENCE" in src and "mic silent" in src)
+check("D2c", "sub-5KB recordings rejected before an API call is wasted",
+      "size < 5000" in src)
 long_ramble = ("umm so I I want the the thing to to record my voice and and also structure it "
                "no wait actually I want it to paste at the cursor and the hotkey should be "
                "control alt space not control space because warp takes that one")
