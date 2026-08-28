@@ -71,6 +71,14 @@ To ship it as an exe: `pyinstaller --onefile --noconsole --name VoicePill voicep
 ffmpeg stays external — bundling it adds ~80 MB — and the exe reads the key from the
 environment.
 
+## Tests
+
+    python test_voicepill.py
+
+32 assertions over credentials, keyboard non-interference, capture, transcription,
+structuring, process behaviour and repo integrity. It records real audio and makes real
+Groq calls, so it needs `GROQ_API_KEY` and a working mic. Exits non-zero on failure.
+
 ## Diagnostics
 
     python voicepill.py --check      # ffmpeg, curl, key, mic level, groq auth
