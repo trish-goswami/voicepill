@@ -503,6 +503,9 @@ class App:
                 return self.ui.put(("error", "mic silent"))
             if STRUCTURE:
                 text = structure(text)
+            # gpt-oss emits U+202F/U+00A0; pasted into a shell an invisible
+            # non-breaking space breaks the command, so flatten them to spaces
+            text = text.replace(" ", " ").replace(" ", " ")
             self.ui.put(("done", text))
         except Exception as exc:
             self.ui.put(("error", str(exc)[:34]))
@@ -642,6 +645,10 @@ def selftest():
 
 
 if __name__ == "__main__":
+    # transcripts are UTF-8; the Windows console defaults to cp1252 and raises
+    # UnicodeEncodeError on anything outside it when --selftest prints a result
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     arg = sys.argv[1] if len(sys.argv) > 1 else ""
     if arg == "--check":
         check()

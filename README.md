@@ -29,7 +29,7 @@ process by hand.
 
 | | capture | hotkey backend | suppresses the key | autostart |
 |---|---|---|---|---|
-| Windows | ffmpeg dshow | `keyboard` | yes | Startup shortcut |
+| Windows | ffmpeg dshow | `keyboard` | capable, off by default | Startup shortcut |
 | macOS | ffmpeg avfoundation | `pynput` | no | LaunchAgent |
 | Linux | ffmpeg pulse | `pynput` | no | systemd user unit |
 
@@ -46,7 +46,8 @@ macOS/Linux - `ctrl+space` is the IME switcher on many setups.
    The Microsoft Store build of Python also works.
 2. **ffmpeg** on PATH: `winget install Gyan.FFmpeg`, then open a new terminal.
    `curl.exe` ships with Windows 10/11 already.
-3. `pip install -r requirements.txt` — one dependency, `keyboard`.
+3. `pip install -r requirements.txt` — one dependency, chosen by platform
+   (`keyboard` on Windows, `pynput` elsewhere).
 4. **Groq API key** (free, no card): create one at <https://console.groq.com/keys>, then
 
        setx GROQ_API_KEY "gsk_..."
@@ -93,7 +94,7 @@ sub-5KB file) as `mic silent` rather than pasting it.
                                                       │
                             POST /chat/completions  gpt-oss-120b  (structurizer)
                                                       │
-                                            clipboard ──> ctrl+v
+                                            clipboard ──> ctrl+alt+space paste
 
 - **`vocab.txt`** is a bias prompt, not an instruction. Whisper conditions on it so
   jargon comes out spelled right. Add any term it mangles — that is the fix, because
@@ -112,9 +113,10 @@ sub-5KB file) as `mic silent` rather than pasting it.
 - Levels come from a second ffmpeg output writing raw PCM to stdout, *not* from
   `astats` + `ametadata=print`. That filter's text stream is block-buffered and only
   flushes at process exit, which never happens here — we stop by killing ffmpeg.
-- Hotkeys register with `suppress=True` so the focused app never sees them; otherwise
-  Warp opens a tab and VS Code fires IntelliSense on `ctrl+space`. `esc` and the quit
-  key are deliberately not suppressed.
+- `SUPPRESS` is **False** by default. Setting it True lets you use a combo another app
+  owns (it swallows the key before Warp sees it), but every keystroke on the machine
+  then routes through this process, and unrelated keys - the numpad - start dropping.
+  Prefer a free combo. `esc` and the quit key are never suppressed either way.
 - Hotkey callbacks run on the keyboard hook thread. They only spawn threads — doing
   work there stalls every keystroke on the system.
 - tkinter owns the main thread. Workers talk to it through one `queue.Queue` drained by
