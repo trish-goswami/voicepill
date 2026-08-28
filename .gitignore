@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.mp3
+*.wav
+build/
+dist/
+*.spec
+# never commit anyone's dictation history or app settings
+voicy-*.json
+settings.json

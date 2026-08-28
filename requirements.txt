@@ -1,0 +1,6 @@
+# windows: `keyboard` is the only backend that can suppress a keystroke, which is
+# what stops Warp/VS Code also acting on ctrl+space
+keyboard>=0.13.5; sys_platform == "win32"
+# macos/linux: pynput. cannot suppress, so pick a combo nothing else owns.
+# macos also needs Accessibility permission for the terminal running this.
+pynput>=1.7.6; sys_platform != "win32"

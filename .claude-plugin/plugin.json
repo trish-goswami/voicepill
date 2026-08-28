@@ -1,0 +1,6 @@
+{
+  "name": "voicepill",
+  "version": "1.0.0",
+  "description": "Local dictation with a visible recording pill. Talk for a minute, get a structured prompt pasted at your cursor. Uses your own free Groq API key; nothing is sent anywhere else.",
+  "keywords": ["dictation", "speech-to-text", "whisper", "groq", "voice"]
+}

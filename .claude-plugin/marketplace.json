@@ -1,0 +1,11 @@
+{
+  "name": "voicepill-marketplace",
+  "owner": { "name": "Sayantan" },
+  "plugins": [
+    {
+      "name": "voicepill",
+      "source": "./",
+      "description": "Push-a-key dictation: mic -> Groq whisper-large-v3 -> gpt-oss-120b structurizer -> your cursor. Windows, macOS, Linux."
+    }
+  ]
+}
