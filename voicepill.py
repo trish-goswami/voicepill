@@ -90,14 +90,16 @@ class Keys:
 # them - that was the cause of every "Thank you." transcript. `--levels` re-measures.
 DEVICE = (r"audio=@device_cm_{33D9A762-90C8-11D0-BD43-00A0C911CE86}"
           r"\wave_{772588A9-FB66-41F4-90F3-49C80F84AAC6}")
-HOTKEY_PASTE = "ctrl+space"
+HOTKEY_PASTE = "ctrl+alt+space"
 HOTKEY_COPY = "ctrl+shift+space"
 HOTKEY_AGAIN = "ctrl+alt+p"   # re-paste the last transcript
 HOTKEY_QUIT = "ctrl+alt+q"
-# SUPPRESS=True swallows the dictation hotkeys so the focused app never sees them.
-# Without it, Warp/VS Code/the IME also act on ctrl+space. Set False if some other
-# tool fights the low-level hook.
-SUPPRESS = True
+# SUPPRESS=False: the hook only listens for its own combo instead of routing every
+# keystroke on the machine through this process. Suppression is what lets you use a
+# combo another app owns (ctrl+space in Warp), but it made unrelated keys - the
+# numpad among them - drop or lag, and it never actually beat Warp. Not worth it:
+# pick a combo nothing else claims and leave the rest of the keyboard alone.
+SUPPRESS = False
 MODEL_STT = "whisper-large-v3"
 # 120b, not 20b: structuring is a reasoning job, and this key has no llama models
 MODEL_STRUCT = "openai/gpt-oss-120b"

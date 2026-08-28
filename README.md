@@ -5,7 +5,7 @@ Mic → Groq `whisper-large-v3` → `gpt-oss-120b` structurizer → your cursor.
 
 Talk for a minute and you get back a structured prompt, not a wall of transcript.
 
-    ctrl+space        tap to start, tap again to transcribe + paste at the cursor
+    ctrl+alt+space    tap to start, tap again to transcribe + paste at the cursor
     ctrl+shift+space  same, but only copies to the clipboard
     ctrl+alt+p        re-paste the last transcript
     esc               cancel and discard the take
