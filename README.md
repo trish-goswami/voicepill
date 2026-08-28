@@ -15,7 +15,7 @@ Talk for a minute and you get back a structured prompt, not a wall of transcript
 
 This repo is a Claude Code plugin. In any Claude Code session:
 
-    /plugin marketplace add <your-github-user>/voicepill
+    /plugin marketplace add I-am-sayantan/voicepill
     /plugin install voicepill@voicepill-marketplace
     /voicepill:setup
 
