@@ -346,7 +346,7 @@ def structure(text: str) -> str:
         "model": MODEL_STRUCT,
         "messages": [{"role": "system", "content": STRUCTURE_PROMPT},
                      {"role": "user", "content": text}],
-        "temperature": 0.2,
+        "temperature": 0,   # detail retention beats phrasing variety
     }), encoding="utf-8")
     out = _curl([f"{API}/chat/completions",
                  "-H", f"Authorization: Bearer {KEY}",
