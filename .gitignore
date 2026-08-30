@@ -8,3 +8,7 @@ dist/
 # never commit anyone's dictation history or app settings
 voicy-*.json
 settings.json
+# built by install-macos-autostart.sh, alongside the launchd stdout/stderr logs
+VoicePill.app/
+voicepill.log
+voicepill.err

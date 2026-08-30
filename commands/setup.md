@@ -66,9 +66,25 @@ another app owns will trigger both - and `ctrl+space` is the IME switcher on man
 setups. Suggest `ctrl+alt+space` there. Edit `HOTKEY_PASTE` at the top of the file.
 
 macOS also needs **Accessibility** permission (System Settings -> Privacy & Security ->
-Accessibility) for the terminal or app running Python, plus **Microphone** permission.
-Without Accessibility the listener starts and silently never fires. Tell the user to
-grant it; you cannot do it for them.
+Accessibility), plus **Microphone** permission. Without Accessibility the listener
+starts and silently never fires. Tell the user to grant it; you cannot do it for them.
+
+Which Accessibility entry depends on how it was started, and getting this wrong costs
+an hour:
+
+- **Started from a terminal**: grant the terminal app. The python process inherits
+  that grant, because a child process is attributed to whoever is responsible for it.
+- **Started by launchd** (step 6): the job is its own TCC subject and inherits
+  nothing. Granting the interpreter does not work - Homebrew and python.org builds
+  are ad-hoc signed with an identifier like `Python-555549445dca...`, which carries no
+  stable designated requirement for TCC to match. The row appears in the list, the
+  toggle turns on, and the process still logs `This process is not trusted!`. Use
+  `install-macos-autostart.sh`, which gives it a bundle identity to match.
+
+`AXIsProcessTrusted()` is the fast way to tell which situation you are in - run it
+under launchd, not from your shell, or you will just measure the terminal's grant:
+
+    python -c "import ctypes,ctypes.util; ax=ctypes.cdll.LoadLibrary(ctypes.util.find_library('ApplicationServices')); ax.AXIsProcessTrusted.restype=ctypes.c_bool; print(ax.AXIsProcessTrusted())"
 
 ## 6. Start it, and start it at login
 
@@ -80,10 +96,25 @@ Then install autostart for the platform:
 - **Windows**: a shortcut in `shell:startup` running `pythonw.exe voicepill.py` with
   the working directory set to the repo. `pythonw` means no console window. Set the
   shortcut's WindowStyle to **1 (normal)**, not 7 - 7 starts it minimised off-screen.
-- **macOS**: a LaunchAgent at `~/Library/LaunchAgents/com.voicepill.plist` with
-  `RunAtLoad`, `ProgramArguments` = the python binary plus the script path, and
-  `EnvironmentVariables` carrying `GROQ_API_KEY` and a `PATH` that includes ffmpeg.
-  `launchctl load` it.
+- **macOS**: run `GROQ_API_KEY=gsk_... ./install-macos-autostart.sh <python>`, passing
+  the interpreter that has `pynput` (the venv one, if you made a venv). It builds
+  `VoicePill.app`, writes `~/Library/LaunchAgents/com.voicepill.plist` (chmod 600 - it
+  holds the key, and a LaunchAgent does not read shell rc files), and bootstraps it.
+  Re-running is safe: it leaves an already-signed bundle alone, so the Accessibility
+  grant survives.
+
+  Check where the checkout lives first. launchd jobs get no access to `~/Documents`,
+  `~/Desktop` or `~/Downloads`, so a checkout under any of those cannot be
+  autostarted at all - the job is blocked at spawn with no error written anywhere,
+  and even reading the script from there hangs the process. Move the checkout
+  somewhere else rather than granting Full Disk Access to work around it.
+
+  Do not hand-write a plist pointing at `python3`. It bootstraps fine and then never
+  fires - see the TCC note in step 5. The script copies the framework interpreter into
+  a bundle with a stable `CFBundleIdentifier`, ad-hoc signs *that*, and points launchd
+  at it, with `PYTHONHOME` aimed back at the stdlib and `PYTHONPATH` at site-packages.
+  The user then grants Accessibility to `VoicePill.app` - narrower than granting the
+  interpreter, which would cover every python script on the machine.
 - **Linux**: a `~/.config/systemd/user/voicepill.service` with
   `ExecStart=/usr/bin/python3 <path>/voicepill.py` and
   `Environment=GROQ_API_KEY=...`, then `systemctl --user enable --now voicepill`.
