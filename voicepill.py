@@ -131,12 +131,14 @@ def _key() -> str:
         import winreg
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment") as k:
             return winreg.QueryValueEx(k, "GROQ_API_KEY")[0]
-    except OSError:
+    except (OSError, ImportError):   # ImportError: no winreg off Windows
         return ""
 
 
 KEY = _key()
-NO_WINDOW = 0x08000000  # CREATE_NO_WINDOW, keeps ffmpeg/curl consoles from flashing
+# CREATE_NO_WINDOW, keeps ffmpeg/curl consoles from flashing. Empty off Windows:
+# subprocess rejects creationflags on every other platform.
+NO_WINDOW = {"creationflags": 0x08000000} if sys.platform == "win32" else {}
 
 # what whisper returns when it hears nothing at all
 SILENCE = {"", "thank you.", "thank you", "thanks for watching!",
@@ -151,14 +153,18 @@ def run(args: list):
     # with the locale codepage mangles anything non-ASCII
     return subprocess.run(args, capture_output=True, text=True,
                           encoding="utf-8", errors="replace",
-                          creationflags=NO_WINDOW)
+                          **NO_WINDOW)
 
 
 WINDOWS = sys.platform == "win32"
 MACOS = sys.platform == "darwin"
 # ffmpeg speaks a different capture API on each OS
 CAPTURE_FMT = "dshow" if WINDOWS else "avfoundation" if MACOS else "pulse"
-PASTE_KEYS = "command+v" if MACOS else "ctrl+v"
+# curl.exe on Windows, plain curl everywhere else
+CURL = shutil.which("curl.exe") or shutil.which("curl") or "curl"
+# ffmpeg's throwaway output sink: NUL on Windows, /dev/null elsewhere
+SINK = "NUL" if WINDOWS else os.devnull
+PASTE_KEYS = "cmd+v" if MACOS else "ctrl+v"   # pynput names it Key.cmd, not "command"
 
 
 KEYS = Keys()
@@ -292,7 +298,7 @@ class Recorder:
         ]
         self.proc = subprocess.Popen(
             args, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-            creationflags=NO_WINDOW)
+            **NO_WINDOW)
         threading.Thread(target=self._pump, daemon=True).start()
 
     def _pump(self):
@@ -319,7 +325,7 @@ class Recorder:
 
 # --- groq -----------------------------------------------------------------
 def _curl(args: list) -> str:
-    r = run(["curl.exe", "-s", "--max-time", "180"] + args)
+    r = run([CURL, "-s", "--max-time", "180"] + args)
     if r.returncode != 0:
         # 6 = DNS, 7 = refused, 28 = timeout. Without this the empty stdout falls
         # through to the silence guard and the pill blames the microphone for
@@ -607,7 +613,7 @@ def levels():
     active = device()
     for i, (name, inp) in enumerate(_list_devices()):
         r = run([ffmpeg(), "-hide_banner", "-f", CAPTURE_FMT, "-i", inp,
-                 "-t", "3", "-af", "volumedetect", "-f", "null", "NUL"])
+                 "-t", "3", "-af", "volumedetect", "-f", "null", SINK])
         got = [ln.split("] ", 1)[-1] for ln in (r.stderr or "").splitlines()
                if "_volume:" in ln]
         mark = "*" if inp == active else " "
@@ -618,16 +624,16 @@ def levels():
 
 def check():
     print("ffmpeg:", ffmpeg())
-    print("curl:  ", shutil.which("curl.exe") or "MISSING")
+    print("curl:  ", CURL or "MISSING")
     print("key:   ", "set" if KEY else "MISSING")
     r = run([ffmpeg(), "-hide_banner", "-f", CAPTURE_FMT, "-i", device(),
-             "-t", "3", "-af", "volumedetect", "-f", "null", "NUL"])
+             "-t", "3", "-af", "volumedetect", "-f", "null", SINK])
     for line in (r.stderr or "").splitlines():
         if "volume:" in line:
             print("mic:   ", line.split("] ", 1)[-1])
     if "max_volume" not in (r.stderr or ""):
         sys.exit("could not open capture device")
-    code = _curl(["-o", "NUL", "-w", "%{http_code}", f"{API}/models",
+    code = _curl(["-o", SINK, "-w", "%{http_code}", f"{API}/models",
                   "-H", f"Authorization: Bearer {KEY}"])
     print("groq:   HTTP", code)
     if code != "200":

@@ -14,7 +14,13 @@ import re as _re
 check("A2", "no real key hardcoded (placeholder in help text is fine)",
       not _re.search(r"gsk_[A-Za-z0-9]{20}", pathlib.Path("voicepill.py").read_text(encoding="utf-8")))
 os.environ.pop("GROQ_API_KEY", None)
-check("A3", "registry fallback works with env unset", bool(v._key()))
+if sys.platform == "win32":
+    check("A3", "registry fallback works with env unset", bool(v._key()))
+else:
+    # off Windows there is no registry: _key() must return "" instead of blowing
+    # up on `import winreg`, which ModuleNotFoundError sneaks past `except OSError`
+    check("A3", "no registry off Windows - _key() returns \"\" and does not raise",
+          v._key() == "")
 check("A4", "no auth/roles by design (no login surface to attack)",
       not any(w in pathlib.Path("voicepill.py").read_text(encoding="utf-8").lower()
               for w in ("password", "login(", "authenticate(")))
@@ -79,8 +85,9 @@ check("E1", "single-instance guard rejects a duplicate while the app holds the m
       not _first, "app running" if not _first else "app not running")
 check("E2", "guard is repeatable, never lets a second copy through", not v.single_instance())
 check("E3", "no console window flash (every subprocess call hidden)",
-      "creationflags=NO_WINDOW" in src and src.count("subprocess.run(") == 1
-      and src.count("subprocess.Popen(") == 1 and "creationflags=NO_WINDOW)" in src)
+      src.count("**NO_WINDOW") == 2 and src.count("subprocess.run(") == 1
+      and src.count("subprocess.Popen(") == 1
+      and v.NO_WINDOW == ({"creationflags": 0x08000000} if sys.platform == "win32" else {}))
 check("E4", "pill hidden when idle (no fixed on-screen element)", "self.root.withdraw()" in src)
 check("E5", "prerequisites checked at startup with a visible error", "messagebox.showerror" in src)
 
